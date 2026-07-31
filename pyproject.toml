@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sitblinksip-desktop"
+version = "0.1.0"
+description = "Native Linux desktop companion for SitBlinkSip: counts eye blinks in the background and nudges you to blink when your rate drops."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ishwor Subedi", email = "ishworr.subedi@gmail.com" }]
+dependencies = [
+    "PySide6>=6.6,<7",
+    # mediapipe pulls in opencv-contrib-python itself; pinning opencv-python(-headless)
+    # separately would install a second, conflicting "cv2" package alongside it.
+    # Pinned exactly (not a range): mediapipe 0.10.18+ dropped the legacy
+    # `mediapipe.solutions` API this app's blink_engine.py relies on, in favor
+    # of the newer Tasks API. 0.10.15 is confirmed to still have it and
+    # matches the version already used by the main SitBlinkSip backend.
+    "mediapipe==0.10.15",
+    "numpy>=1.26,<2",
+    "pynput>=1.7,<2",
+]
+
+[project.scripts]
+sitblinksip-desktop = "sitblinksip_desktop.app:main"
+
+[tool.setuptools.packages.find]
+include = ["sitblinksip_desktop*"]
+
+[tool.setuptools.package-data]
+sitblinksip_desktop = ["resources/*", "resources/sounds/*"]

@@ -1,0 +1,10 @@
+PySide6>=6.6,<7
+# mediapipe pulls in opencv-contrib-python itself; pinning opencv-python(-headless)
+# separately here would install a second, conflicting "cv2" package alongside it.
+# Pinned exactly (not a range): mediapipe 0.10.18+ dropped the legacy
+# `mediapipe.solutions` API this app's blink_engine.py relies on, in favor of
+# the newer Tasks API. 0.10.15 is confirmed to still have it and matches the
+# version already used by the main SitBlinkSip backend.
+mediapipe==0.10.15
+numpy>=1.26,<2
+pynput>=1.7,<2

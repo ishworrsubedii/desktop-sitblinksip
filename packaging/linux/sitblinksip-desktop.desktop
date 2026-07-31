@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SitBlinkSip Desktop
+Comment=Background eye-blink tracker with break reminders
+Exec=/usr/bin/sitblinksip-desktop
+Icon=sitblinksip-desktop
+Terminal=false
+Categories=Utility;
+Keywords=blink;eyes;health;posture;reminder;webcam;
+StartupNotify=false

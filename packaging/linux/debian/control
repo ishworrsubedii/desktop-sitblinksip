@@ -1,0 +1,16 @@
+Package: sitblinksip-desktop
+Version: __VERSION__
+Section: utils
+Priority: optional
+Architecture: __ARCH__
+Maintainer: Ishwor Subedi <ishworr.subedi@gmail.com>
+Installed-Size: __INSTALLED_SIZE__
+Depends: libgl1, libxcb-cursor0, libxkbcommon0, libxkbcommon-x11-0, libxcb-xinerama0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libegl1, libpulse0
+Homepage: https://github.com/ishworrsubedii/SitBlinkSip
+Description: Background eye-blink tracker with break, posture and water reminders
+ SitBlinkSip Desktop watches for eye blinks, posture and time-since-last-water-
+ break through the webcam and a timer, without displaying the camera feed by
+ default. If your blink rate drops below a healthy minimum over a rolling
+ minute, the screen blanks briefly to prompt you to blink; slouching and long
+ stretches without water trigger a sound + notification instead. Press F6 (or
+ use the tray menu) to reveal the live camera preview on demand.
