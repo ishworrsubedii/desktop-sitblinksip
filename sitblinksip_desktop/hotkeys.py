@@ -4,10 +4,16 @@ author  @ github/ishworrsubedii
 
 Global F6 hotkey to toggle the camera preview from anywhere on the desktop.
 
-Linux has no single portable API for this: `pynput` hooks X11 directly and
-works well there, but Wayland's security model blocks global key listeners
-for regular apps entirely. We detect that up front and fail soft - the
-in-app QShortcut bound on the HUD/tray still covers F6 while a
+There is no portable API for this, and each platform withholds it differently:
+
+  Windows  works out of the box (`pynput` uses a Win32 low-level keyboard hook).
+  macOS    needs the user to grant Accessibility permission first; without it
+           the listener starts but silently never fires, so we check up front
+           and say so rather than leaving a dead key.
+  Linux    `pynput` hooks X11 and works well there, but Wayland's security
+           model blocks global key listeners for regular apps entirely.
+
+Every failure mode is soft: the in-app QShortcut still covers F6 while a
 SitBlinkSip window has focus, and the tray menu always has a manual toggle.
 """
 from __future__ import annotations
@@ -16,14 +22,35 @@ import os
 
 from PySide6.QtCore import QObject, Signal
 
+from .platform_support import APP_NAME, IS_LINUX, IS_MACOS
+
 
 def is_wayland_session() -> bool:
+    if not IS_LINUX:
+        return False
     session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
     return session_type == "wayland" or bool(os.environ.get("WAYLAND_DISPLAY"))
 
 
+def macos_accessibility_trusted() -> bool | None:
+    """Whether macOS has granted this process Accessibility access.
+
+    Returns None when we can't tell (pyobjc's ApplicationServices bindings
+    aren't guaranteed to be present), in which case the caller should just try
+    and let the listener fail quietly.
+    """
+    if not IS_MACOS:
+        return None
+    try:
+        from ApplicationServices import AXIsProcessTrusted
+
+        return bool(AXIsProcessTrusted())
+    except Exception:
+        return None
+
+
 class GlobalHotkey(QObject):
-    """Best-effort global F6 listener. Emits `triggered` on X11; a no-op on Wayland."""
+    """Best-effort global F6 listener; degrades to a no-op where blocked."""
 
     triggered = Signal()
     unavailable = Signal(str)
@@ -38,6 +65,15 @@ class GlobalHotkey(QObject):
                 "Running under Wayland: the global F6 hotkey can't be registered "
                 "system-wide. Use the tray menu, or focus a SitBlinkSip window "
                 "and press F6 there."
+            )
+            return
+
+        if macos_accessibility_trusted() is False:
+            self.unavailable.emit(
+                "macOS is blocking the global F6 hotkey. To enable it, open "
+                "System Settings -> Privacy & Security -> Accessibility and "
+                f"turn on {APP_NAME}, then restart the app. Until then, use the "
+                "menu bar icon, or press F6 with a SitBlinkSip window focused."
             )
             return
 

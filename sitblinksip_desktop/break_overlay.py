@@ -12,13 +12,24 @@ from PySide6.QtCore import Qt, QTimer, QObject, Signal
 from PySide6.QtGui import QGuiApplication, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
+from .platform_support import IS_MACOS, bring_to_front
+
 
 class _OverlayWindow(QWidget):
     dismissed = Signal()
 
     def __init__(self, message: str, submessage: str):
         super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        # Qt.Tool keeps the overlay out of the taskbar/window list on Linux
+        # and Windows. On macOS it also stops the window becoming "key",
+        # which would leave it stuck below the menu bar and unable to receive
+        # the Escape key - so there we use a plain window instead and rely on
+        # WindowStaysOnTopHint plus the app being a background (LSUIElement)
+        # app to keep it out of the way.
+        flags = Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+        if not IS_MACOS:
+            flags |= Qt.Tool
+        self.setWindowFlags(flags)
         self.setStyleSheet("background-color: black;")
         self.setCursor(Qt.BlankCursor)
 
@@ -73,10 +84,20 @@ class BreakOverlay(QObject):
             window = _OverlayWindow(self.message, self.submessage)
             window.dismissed.connect(self._close_all)
             geo = screen.geometry()
+            window.setScreen(screen)
             window.move(geo.topLeft())
             window.resize(geo.size())
             window.showFullScreen()
             self._windows.append(window)
+
+        # Only the first screen's window takes focus, so Escape has somewhere
+        # to land. Without this the overlay can come up unfocused (macOS
+        # background apps, and Linux WMs with focus-stealing prevention) and
+        # the only way out would be to wait it out.
+        if self._windows:
+            bring_to_front(self._windows[0])
+            self._windows[0].setFocus()
+
         self._timer.start(int(self.duration_seconds * 1000))
 
     def _close_all(self) -> None:

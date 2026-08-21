@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from . import autostart
 from .config import AppConfig
+from .platform_support import bring_to_front
 
 
 class SettingsDialog(QDialog):
@@ -39,6 +40,13 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(tabs)
         layout.addWidget(buttons)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        # The app has no Dock/taskbar presence on macOS (LSUIElement), so a
+        # dialog opened from the menu bar can otherwise appear behind
+        # whatever the user was working in.
+        bring_to_front(self)
 
     def _build_blink_tab(self, config: AppConfig) -> QWidget:
         self.camera_index_spin = QSpinBox()
@@ -184,8 +192,15 @@ class SettingsDialog(QDialog):
 
         self._config.sound_enabled = self.sound_enabled_check.isChecked()
 
-        self._config.autostart = self.autostart_check.isChecked()
-        autostart.set_enabled(self._config.autostart)
+        # Login items can fail for reasons outside our control (a locked-down
+        # registry, a read-only LaunchAgents dir). Persist what actually
+        # happened, not what was asked for, so the checkbox doesn't lie on
+        # the next open.
+        wanted_autostart = self.autostart_check.isChecked()
+        if autostart.set_enabled(wanted_autostart):
+            self._config.autostart = wanted_autostart
+        else:
+            self._config.autostart = autostart.is_enabled()
 
         self._config.save()
         return self._config

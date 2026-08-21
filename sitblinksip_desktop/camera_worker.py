@@ -20,9 +20,35 @@ import cv2
 from PySide6.QtCore import QThread, Signal
 
 from .blink_engine import BlinkEngine, BlinkResult
+from .platform_support import camera_backend, camera_error_hint
 from .posture_engine import PostureEngine, PostureResult
 
 POSTURE_EVERY_N_FRAMES = 5
+
+# Blink/posture detection works fine on a small frame, and asking for one
+# explicitly stops macOS AVFoundation and some Windows webcams from handing us
+# 1080p (or worse) by default, which costs CPU for no benefit.
+CAPTURE_WIDTH = 640
+CAPTURE_HEIGHT = 480
+
+
+def _open_capture(camera_index: int):
+    """Open the webcam, preferring this platform's best backend.
+
+    The explicit backend is a strong preference, not a requirement: unusual
+    setups (a virtual camera on Windows that only exposes MSMF, a Linux
+    gstreamer source) can still work through OpenCV's autodetection, so fall
+    back to it rather than refusing to start.
+    """
+    preferred = camera_backend()
+    cap = cv2.VideoCapture(camera_index, preferred)
+    if not cap.isOpened():
+        cap.release()
+        cap = cv2.VideoCapture(camera_index)
+    if cap.isOpened():
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAPTURE_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAPTURE_HEIGHT)
+    return cap
 
 
 class CameraWorker(QThread):
@@ -96,12 +122,9 @@ class CameraWorker(QThread):
         self._stop_event.set()
 
     def run(self) -> None:
-        cap = cv2.VideoCapture(self.camera_index)
+        cap = _open_capture(self.camera_index)
         if not cap.isOpened():
-            self.camera_error.emit(
-                f"Could not open camera device {self.camera_index}. "
-                "Check that it's connected and not in use by another app."
-            )
+            self.camera_error.emit(camera_error_hint(self.camera_index))
             return
 
         frame_count = 0

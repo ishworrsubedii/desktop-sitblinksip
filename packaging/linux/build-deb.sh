@@ -57,31 +57,31 @@ source "${VENV_DIR}/bin/activate"
 pip install --upgrade pip >/dev/null
 pip install -r "${PROJECT_ROOT}/requirements.txt" pyinstaller >/dev/null
 
+echo "==> Generating platform icons"
+python "${PROJECT_ROOT}/scripts/generate_icons.py"
+
 # mediapipe's legacy Pose Solutions API downloads its .tflite model into its
 # own site-packages/ directory on first use instead of shipping it in the
 # wheel (unlike FaceMesh, which is bundled). A frozen --onefile build re-
 # extracts to a fresh temp dir on every launch, so without this warm-up the
 # app would silently redownload that model from the network on every single
-# start. Triggering it once here means `--collect-all mediapipe` below picks
-# up the file like any other bundled package data.
+# start. Triggering it once here means the spec's collect_all("mediapipe")
+# picks up the file like any other bundled package data.
 echo "==> Warming MediaPipe Pose model cache (one-time download)"
 python -c "
 import mediapipe as mp
 mp.solutions.pose.Pose(model_complexity=0).close()
 "
 
+# The shared spec (used by the Windows and macOS builds too) is what decides
+# --onefile vs --onedir per platform, and - unlike the old inline flags - it
+# also bundles sitblinksip_desktop/resources, without which the installed app
+# starts fine but plays no alert sounds.
 echo "==> Freezing with PyInstaller"
-pyinstaller \
-    --name "${PKG_NAME}" \
-    --onefile \
-    --windowed \
-    --collect-all mediapipe \
-    --collect-all cv2 \
-    --collect-all PySide6 \
+pyinstaller --noconfirm \
     --distpath "${BUILD_DIR}/pyinstaller-dist" \
     --workpath "${BUILD_DIR}/pyinstaller-work" \
-    --specpath "${BUILD_DIR}" \
-    "${PROJECT_ROOT}/pyinstaller_entry.py"
+    "${PROJECT_ROOT}/packaging/pyinstaller/sitblinksip-desktop.spec"
 
 deactivate
 

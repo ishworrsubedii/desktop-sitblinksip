@@ -8,22 +8,24 @@ scripts/generate_alert_sounds.py and played back with QSoundEffect.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtCore import QUrl
 from PySide6.QtMultimedia import QSoundEffect
 
-_SOUND_DIR = Path(__file__).parent / "resources" / "sounds"
+from .platform_support import resources_dir
+
 _KINDS = ("blink", "posture", "water")
 
 
 class AlertPlayer:
     def __init__(self):
         self.enabled = True
+        # Resolved at construction rather than import time: in a frozen build
+        # this lives under the PyInstaller extraction dir, not next to the .py.
+        sound_dir = resources_dir() / "sounds"
         self._effects: dict[str, QSoundEffect] = {}
         for kind in _KINDS:
             effect = QSoundEffect()
-            effect.setSource(QUrl.fromLocalFile(str(_SOUND_DIR / f"{kind}.wav")))
+            effect.setSource(QUrl.fromLocalFile(str(sound_dir / f"{kind}.wav")))
             effect.setVolume(0.6)
             self._effects[kind] = effect
 

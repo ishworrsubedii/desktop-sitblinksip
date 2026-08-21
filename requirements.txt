@@ -1,10 +1,27 @@
 PySide6>=6.6,<7
 # mediapipe pulls in opencv-contrib-python itself; pinning opencv-python(-headless)
 # separately here would install a second, conflicting "cv2" package alongside it.
-# Pinned exactly (not a range): mediapipe 0.10.18+ dropped the legacy
-# `mediapipe.solutions` API this app's blink_engine.py relies on, in favor of
-# the newer Tasks API. 0.10.15 is confirmed to still have it and matches the
-# version already used by the main SitBlinkSip backend.
-mediapipe==0.10.15
+#
+# Version is pinned exactly, and differs per OS:
+#
+#   * 0.10.18+ dropped the legacy `mediapipe.solutions` API this app's
+#     blink_engine.py/posture_engine.py rely on, in favour of the newer Tasks
+#     API - so the ceiling is 0.10.15 everywhere.
+#   * 0.10.15 shipped no Windows wheel at all (only manylinux + macOS; check
+#     PyPI's file list for that release). 0.10.14 is the newest release that
+#     both has a win_amd64 wheel and still has mp.solutions, so Windows pins
+#     one release lower.
+#
+# Linux/macOS stay on 0.10.15 to match the version used by the main
+# SitBlinkSip backend. The macOS wheels are macosx_11_0_universal2, so Apple
+# Silicon is covered natively.
+mediapipe==0.10.15; sys_platform != "win32"
+mediapipe==0.10.14; sys_platform == "win32"
 numpy>=1.26,<2
 pynput>=1.7,<2
+# pynput's macOS backend needs these pyobjc bindings; they also give us
+# AXIsProcessTrusted(), which is how hotkeys.py detects a missing
+# Accessibility grant instead of leaving a silently dead F6.
+pyobjc-framework-Cocoa>=9; sys_platform == "darwin"
+pyobjc-framework-ApplicationServices>=9; sys_platform == "darwin"
+pyobjc-framework-Quartz>=9; sys_platform == "darwin"

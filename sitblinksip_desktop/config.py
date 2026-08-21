@@ -2,23 +2,20 @@
 project @ SitBlinkSip Desktop
 author  @ github/ishworrsubedii
 
-Persisted user settings, stored as JSON under $XDG_CONFIG_HOME (or ~/.config).
+Persisted user settings, stored as JSON in the per-platform config directory
+(see platform_support.config_dir).
 """
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
-APP_DIR_NAME = "sitblinksip-desktop"
+from .platform_support import APP_ID, config_dir
 
+APP_DIR_NAME = APP_ID
 
-def config_dir() -> Path:
-    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    path = Path(base) / APP_DIR_NAME
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+__all__ = ["APP_DIR_NAME", "AppConfig", "config_dir", "config_path"]
 
 
 def config_path() -> Path:

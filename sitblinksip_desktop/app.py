@@ -20,6 +20,12 @@ from .config import AppConfig
 from .hotkeys import GlobalHotkey
 from .hud_widget import HudWidget
 from .icon import build_app_icon
+from .platform_support import (
+    APP_ID,
+    APP_NAME,
+    IS_LINUX,
+    set_windows_app_user_model_id,
+)
 from .posture_engine import PostureResult
 from .settings_dialog import SettingsDialog
 from .sound import AlertPlayer
@@ -43,7 +49,13 @@ class SitBlinkSipApp:
 
         self.qt_app = QApplication(sys.argv)
         self.qt_app.setQuitOnLastWindowClosed(False)
-        self.qt_app.setApplicationName("SitBlinkSip Desktop")
+        self.qt_app.setApplicationName(APP_NAME)
+        self.qt_app.setApplicationDisplayName(APP_NAME)
+        if IS_LINUX:
+            # Lets Wayland/GNOME match the running app to its installed
+            # .desktop entry, so it gets the right icon and name in the
+            # window list instead of a generic placeholder.
+            self.qt_app.setDesktopFileName(APP_ID)
 
         self.app_icon = build_app_icon()
 
@@ -271,6 +283,9 @@ class SitBlinkSipApp:
 
 
 def main() -> None:
+    # Has to happen before the first window exists, or Windows keeps
+    # attributing the tray icon and its notifications to "Python".
+    set_windows_app_user_model_id()
     app = SitBlinkSipApp()
     sys.exit(app.run())
 

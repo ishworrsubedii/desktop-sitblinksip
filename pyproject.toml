@@ -5,22 +5,39 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sitblinksip-desktop"
 version = "0.1.0"
-description = "Native Linux desktop companion for SitBlinkSip: counts eye blinks in the background and nudges you to blink when your rate drops."
+description = "Cross-platform desktop companion for SitBlinkSip: counts eye blinks in the background and nudges you to blink when your rate drops."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Ishwor Subedi", email = "ishworr.subedi@gmail.com" }]
+classifiers = [
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS :: MacOS X",
+]
 dependencies = [
     "PySide6>=6.6,<7",
     # mediapipe pulls in opencv-contrib-python itself; pinning opencv-python(-headless)
     # separately would install a second, conflicting "cv2" package alongside it.
-    # Pinned exactly (not a range): mediapipe 0.10.18+ dropped the legacy
-    # `mediapipe.solutions` API this app's blink_engine.py relies on, in favor
-    # of the newer Tasks API. 0.10.15 is confirmed to still have it and
-    # matches the version already used by the main SitBlinkSip backend.
-    "mediapipe==0.10.15",
+    #
+    # Pinned exactly, and differently per OS. mediapipe 0.10.18+ dropped the
+    # legacy `mediapipe.solutions` API this app's blink_engine.py relies on,
+    # in favor of the newer Tasks API, so 0.10.15 is the ceiling. But that
+    # release shipped no Windows wheel at all - 0.10.14 is the newest release
+    # that both builds for win_amd64 and still has mp.solutions.
+    # See requirements.txt for the long version.
+    "mediapipe==0.10.15; sys_platform != 'win32'",
+    "mediapipe==0.10.14; sys_platform == 'win32'",
     "numpy>=1.26,<2",
     "pynput>=1.7,<2",
+    # pynput's macOS backend, plus AXIsProcessTrusted() for detecting a
+    # missing Accessibility grant (see hotkeys.py).
+    "pyobjc-framework-Cocoa>=9; sys_platform == 'darwin'",
+    "pyobjc-framework-ApplicationServices>=9; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=9; sys_platform == 'darwin'",
 ]
 
 [project.scripts]
