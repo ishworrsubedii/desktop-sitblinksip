@@ -1,0 +1,93 @@
+name: Build & release packages
+
+# Builds the .deb (Linux), setup.exe (Windows) and .dmg (macOS, both Intel
+# and Apple Silicon) on a matching OS runner each, since PyInstaller freezes
+# the interpreter of the machine it runs on and cannot cross-compile - see
+# the "Build a native package" section of README.md.
+#
+# Tag a release (`git tag v0.2.0 && git push origin v0.2.0`) to build all
+# four artifacts and publish them to a GitHub Release automatically. Use
+# "Run workflow" for a build without publishing (e.g. to sanity-check a
+# branch before tagging).
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  linux-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build .deb
+        run: ./packaging/linux/build-deb.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  windows-setup:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File packaging\windows\build-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup
+          path: dist/*setup.exe
+          if-no-files-found: error
+
+  macos-dmg:
+    strategy:
+      fail-fast: false
+      matrix:
+        # opencv-contrib-python (via mediapipe) ships separate arm64/x86_64
+        # wheels rather than a universal2 one, so each architecture needs its
+        # own native build - see the "macOS" section of README.md.
+        os: [macos-13, macos-14] # macos-13 = Intel, macos-14 = Apple Silicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build .dmg
+        run: ./packaging/macos/build-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg-${{ matrix.os }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: [linux-deb, windows-setup, macos-dmg]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect installers
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.deb" -o -name "*.exe" -o -name "*.dmg" \) \
+            -exec cp {} release/ \;
+          ls -la release
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true

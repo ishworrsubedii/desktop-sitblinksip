@@ -20,6 +20,7 @@ from .config import AppConfig
 from .hotkeys import GlobalHotkey
 from .hud_widget import HudWidget
 from .icon import build_app_icon
+from .onboarding import OnboardingWizard
 from .platform_support import (
     APP_ID,
     APP_NAME,
@@ -58,6 +59,18 @@ class SitBlinkSipApp:
             self.qt_app.setDesktopFileName(APP_ID)
 
         self.app_icon = build_app_icon()
+
+        if not self.config.onboarding_complete:
+            wizard = OnboardingWizard(self.config)
+            wizard.setWindowIcon(self.app_icon)
+            if wizard.exec():
+                wizard.apply_to_config()
+            else:
+                # Cancelling still counts as "seen it" - this is a one-time
+                # explanation, not a mandatory setup gate, so it never nags
+                # on a later launch.
+                self.config.onboarding_complete = True
+                self.config.save()
 
         self.sound = AlertPlayer()
         self.sound.enabled = self.config.sound_enabled

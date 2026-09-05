@@ -91,6 +91,16 @@ pip install -r requirements.txt
 python -m sitblinksip_desktop
 ```
 
+## First run
+
+The first launch on any platform shows a short four-page wizard - what the
+app watches (blink/posture/water), why it needs the webcam, where the tray
+icon and F6 hotkey live, and a couple of quick preference toggles (posture
+checks, water reminders, launch on login). It only ever appears once, tracked
+by `onboarding_complete` in `config.json`; dismissing it with Cancel counts as
+seen, same as Finish. Everything it sets can be changed later from the tray's
+"Settings..." dialog.
+
 ## Build a native package
 
 Each package has to be built **on the OS it targets** - PyInstaller freezes
@@ -98,6 +108,22 @@ the interpreter and native wheels of the machine it runs on, so there is no
 cross-compiling. All three scripts follow the same shape: create an isolated
 build venv, generate the platform icons, warm the MediaPipe Pose cache, freeze
 via the shared spec, then wrap the result.
+
+### All three, automatically (GitHub Actions)
+
+[.github/workflows/release.yml](.github/workflows/release.yml) runs the three
+scripts below on matching Linux/Windows/macOS(x2) runners and attaches the
+results to a GitHub Release. Push a version tag to build and publish all four
+installers (`.deb`, `setup.exe`, Intel `.dmg`, Apple Silicon `.dmg`) in one
+shot:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Use the workflow's manual "Run workflow" button to build all four without
+publishing a release - useful for sanity-checking a branch before tagging.
 
 ### Linux → `.deb`
 

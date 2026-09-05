@@ -44,6 +44,8 @@ class AppConfig:
     water_reminder_enabled: bool = True
     water_break_interval_minutes: float = 45.0
 
+    onboarding_complete: bool = False
+
     @classmethod
     def load(cls) -> "AppConfig":
         path = config_path()
