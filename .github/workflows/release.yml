@@ -86,6 +86,23 @@ jobs:
           mkdir -p release
           find artifacts -type f \( -name "*.deb" -o -name "*.exe" -o -name "*.dmg" \) \
             -exec cp {} release/ \;
+
+          # Version-free copies alongside the originals, so the website's
+          # download buttons can hit a permanent
+          # .../releases/latest/download/<name> URL that always resolves to
+          # the newest tag instead of being re-pointed on every release.
+          deb="$(find release -maxdepth 1 -name '*.deb' | head -n1)"
+          [ -n "$deb" ] && cp "$deb" release/sitblinksip-desktop-linux-amd64.deb
+
+          exe="$(find release -maxdepth 1 -name '*setup.exe' | head -n1)"
+          [ -n "$exe" ] && cp "$exe" release/SitBlinkSip-Desktop-windows-setup.exe
+
+          arm_dmg="$(find artifacts -path '*macos-14*' -name '*.dmg' | head -n1)"
+          [ -n "$arm_dmg" ] && cp "$arm_dmg" release/SitBlinkSip-Desktop-macos-arm64.dmg
+
+          intel_dmg="$(find artifacts -path '*macos-13*' -name '*.dmg' | head -n1)"
+          [ -n "$intel_dmg" ] && cp "$intel_dmg" release/SitBlinkSip-Desktop-macos-intel.dmg
+
           ls -la release
       - uses: softprops/action-gh-release@v2
         with:
