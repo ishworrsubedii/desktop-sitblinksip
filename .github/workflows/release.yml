@@ -23,6 +23,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install Qt runtime libraries
+        # ubuntu-latest ships no GPU/graphics stack at all, so even
+        # QT_QPA_PLATFORM=offscreen fails: PySide6.QtGui dynamically links
+        # libEGL/libGL/libxkbcommon at import time, before the platform
+        # plugin is ever chosen. Needed for scripts/generate_icons.py, which
+        # build-deb.sh runs to render the app icon headlessly.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0
       - name: Build .deb
         run: ./packaging/linux/build-deb.sh
       - uses: actions/upload-artifact@v4
