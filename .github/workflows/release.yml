@@ -1,12 +1,17 @@
 name: Build & release packages
 
-# Builds the .deb (Linux), setup.exe (Windows) and .dmg (macOS, both Intel
-# and Apple Silicon) on a matching OS runner each, since PyInstaller freezes
-# the interpreter of the machine it runs on and cannot cross-compile - see
-# the "Build a native package" section of README.md.
+# Builds the .deb (Linux), setup.exe (Windows) and .dmg (macOS, Apple
+# Silicon) on a matching OS runner each, since PyInstaller freezes the
+# interpreter of the machine it runs on and cannot cross-compile - see the
+# "Build a native package" section of README.md.
+#
+# Intel Mac (macos-13) builds are dropped: GitHub's shared macos-13 runner
+# pool is being phased out and jobs there were queuing for hours without
+# ever picking up. Re-add it to the macos-dmg matrix below if that pool
+# frees up again, or self-host an Intel runner.
 #
 # Tag a release (`git tag v0.2.0 && git push origin v0.2.0`) to build all
-# four artifacts and publish them to a GitHub Release automatically. Use
+# three artifacts and publish them to a GitHub Release automatically. Use
 # "Run workflow" for a build without publishing (e.g. to sanity-check a
 # branch before tagging).
 on:
@@ -64,8 +69,10 @@ jobs:
       matrix:
         # opencv-contrib-python (via mediapipe) ships separate arm64/x86_64
         # wheels rather than a universal2 one, so each architecture needs its
-        # own native build - see the "macOS" section of README.md.
-        os: [macos-13, macos-14] # macos-13 = Intel, macos-14 = Apple Silicon
+        # own native build - see the "macOS" section of README.md. Intel
+        # (macos-13) is dropped for now - see the note at the top of this
+        # file.
+        os: [macos-14] # macos-14 = Apple Silicon
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -108,9 +115,6 @@ jobs:
 
           arm_dmg="$(find artifacts -path '*macos-14*' -name '*.dmg' | head -n1)"
           [ -n "$arm_dmg" ] && cp "$arm_dmg" release/SitBlinkSip-Desktop-macos-arm64.dmg
-
-          intel_dmg="$(find artifacts -path '*macos-13*' -name '*.dmg' | head -n1)"
-          [ -n "$intel_dmg" ] && cp "$intel_dmg" release/SitBlinkSip-Desktop-macos-intel.dmg
 
           ls -la release
       - uses: softprops/action-gh-release@v2
