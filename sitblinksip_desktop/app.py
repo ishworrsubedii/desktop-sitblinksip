@@ -7,6 +7,8 @@ global hotkey together.
 """
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
 import time
 
@@ -183,7 +185,15 @@ class SitBlinkSipApp:
         self._notify("Water break", "Time to drink some water.")
 
     def _notify(self, title: str, message: str) -> None:
-        if self.tray is not None:
+        # Qt's tray balloon depends on the tray icon actually rendering,
+        # which on Linux desktops (GNOME chief among them) is unreliable
+        # even when isSystemTrayAvailable() reports True - no visible icon
+        # means the balloon has nowhere to anchor and silently never
+        # appears. Talking to the desktop's notification daemon directly
+        # works regardless of tray state, so prefer it there.
+        if IS_LINUX and shutil.which("notify-send"):
+            subprocess.Popen(["notify-send", "--app-name", APP_NAME, title, message])
+        elif self.tray is not None:
             self.tray.showMessage(title, message, QSystemTrayIcon.Information, 6000)
         else:
             print(f"[sitblinksip-desktop] {title}: {message}", file=sys.stderr)

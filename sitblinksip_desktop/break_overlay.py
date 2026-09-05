@@ -8,11 +8,16 @@ a break and a blink. Dismissible early with Escape or a click.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, QObject, Signal
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer, QObject, Signal
 from PySide6.QtGui import QGuiApplication, QKeyEvent, QMouseEvent
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QGraphicsOpacityEffect, QWidget, QVBoxLayout, QLabel
 
 from .platform_support import IS_MACOS, bring_to_front
+
+# Snapping straight to a full-black screen and back reads as a jarring flash.
+# Fading in and out over this long softens it into more of a dim than a jolt,
+# while still being unmissable.
+_FADE_MS = 250
 
 
 class _OverlayWindow(QWidget):
@@ -47,6 +52,10 @@ class _OverlayWindow(QWidget):
         layout.addWidget(title)
         layout.addWidget(subtitle)
 
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.opacity_effect.setOpacity(0.0)
+        self.setGraphicsEffect(self.opacity_effect)
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Escape:
             self.dismissed.emit()
@@ -70,9 +79,10 @@ class BreakOverlay(QObject):
         self.message = message
         self.submessage = submessage
         self._windows: list[_OverlayWindow] = []
+        self._animations: list[QPropertyAnimation] = []
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self._close_all)
+        self._timer.timeout.connect(self._fade_out_and_close)
 
     def is_active(self) -> bool:
         return bool(self._windows)
@@ -98,10 +108,30 @@ class BreakOverlay(QObject):
             bring_to_front(self._windows[0])
             self._windows[0].setFocus()
 
+        self._animate(start=0.0, end=1.0)
         self._timer.start(int(self.duration_seconds * 1000))
+
+    def _animate(self, start: float, end: float) -> None:
+        self._animations = []
+        for window in self._windows:
+            anim = QPropertyAnimation(window.opacity_effect, b"opacity", self)
+            anim.setDuration(_FADE_MS)
+            anim.setStartValue(start)
+            anim.setEndValue(end)
+            anim.setEasingCurve(QEasingCurve.OutCubic if end > start else QEasingCurve.InCubic)
+            anim.start()
+            self._animations.append(anim)
+
+    def _fade_out_and_close(self) -> None:
+        self._timer.stop()
+        if not self._windows:
+            return
+        self._animate(start=1.0, end=0.0)
+        QTimer.singleShot(_FADE_MS, self._close_all)
 
     def _close_all(self) -> None:
         self._timer.stop()
+        self._animations = []
         for window in self._windows:
             window.close()
         self._windows = []
